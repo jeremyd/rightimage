@@ -38,6 +38,10 @@ end
 
 
 #  - add cloud tools
+# APRIL OF 2010 toolset
+# ec2-api-tools-1.3-51254.zip
+# ec2-ami-tools-1.3-49953.zip
+
 bash "install_ec2_tools" do 
   creates "#{node[:rightimage][:mount_dir]}/home/ec2/bin"
   code <<-EOH
@@ -45,8 +49,8 @@ bash "install_ec2_tools" do
     ROOT=#{node[:rightimage][:mount_dir]}
     rm -rf #{node[:rightimage][:mount_dir]}/home/ec2 || true
     mkdir -p #{node[:rightimage][:mount_dir]}/home/ec2
-    curl -o #{node[:rightimage][:mount_dir]}/tmp/ec2-api-tools.zip http://s3.amazonaws.com/ec2-downloads/ec2-api-tools.zip
-    curl -o #{node[:rightimage][:mount_dir]}/tmp/ec2-ami-tools.zip http://s3.amazonaws.com/ec2-downloads/ec2-ami-tools.zip
+    curl -o #{node[:rightimage][:mount_dir]}/tmp/ec2-api-tools.zip http://s3.amazonaws.com/ec2-downloads/ec2-api-tools-1.3-51254.zip
+    curl -o #{node[:rightimage][:mount_dir]}/tmp/ec2-ami-tools.zip http://s3.amazonaws.com/ec2-downloads/ec2-ami-tools-1.3-49953.zip
     unzip #{node[:rightimage][:mount_dir]}/tmp/ec2-api-tools.zip -d #{node[:rightimage][:mount_dir]}/tmp/
     unzip #{node[:rightimage][:mount_dir]}/tmp/ec2-ami-tools.zip -d #{node[:rightimage][:mount_dir]}/tmp/
     cp -r #{node[:rightimage][:mount_dir]}/tmp/ec2-api-tools-*/* #{node[:rightimage][:mount_dir]}/home/ec2/.

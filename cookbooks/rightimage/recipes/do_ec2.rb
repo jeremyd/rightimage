@@ -158,13 +158,13 @@ if node[:rightimage][:cloud] == "ec2"
     chroot #{node[:rightimage][:mount_dir]} chmod 1777 /tmp
 
     echo bundling...
-    ec2-bundle-vol -r #{node[:rightimage][:arch]} -d "#{node[:rightimage][:mount_dir]}"_temp -k  /tmp/AWS_X509_KEY.pem -c  /tmp/AWS_X509_CERT.pem -u #{node[:rightimage][:aws_account_number]} -p #{image_name}  -v #{node[:rightimage][:mount_dir]} $kernel_opt $ramdisk_opt -B "ami=sda1,root=/dev/sda1,ephemeral0=sdb,swap=sda3" --exclude /tmp     #--generate-fstab
+    /home/ec2/bin/ec2-bundle-vol -r #{node[:rightimage][:arch]} -d "#{node[:rightimage][:mount_dir]}"_temp -k  /tmp/AWS_X509_KEY.pem -c  /tmp/AWS_X509_CERT.pem -u #{node[:rightimage][:aws_account_number]} -p #{image_name}  -v #{node[:rightimage][:mount_dir]} $kernel_opt $ramdisk_opt -B "ami=sda1,root=/dev/sda1,ephemeral0=sdb,swap=sda3" --exclude /tmp     #--generate-fstab
     
     echo "Uploading..." 
-    echo y | ec2-upload-bundle -b #{node[:rightimage][:image_upload_bucket]} -m "#{node[:rightimage][:mount_dir]}"_temp/#{image_name}.manifest.xml -a #{node[:rightimage][:aws_access_key_id]} -s #{node[:rightimage][:aws_secret_access_key]} --retry --batch
+    echo y | /home/ec2/bin/ec2-upload-bundle -b #{node[:rightimage][:image_upload_bucket]} -m "#{node[:rightimage][:mount_dir]}"_temp/#{image_name}.manifest.xml -a #{node[:rightimage][:aws_access_key_id]} -s #{node[:rightimage][:aws_secret_access_key]} --retry --batch
     
     echo registering... 
-    image_out_s3=`ec2-register #{node[:rightimage][:image_upload_bucket]}/#{image_name}.manifest.xml -K  /tmp/AWS_X509_KEY.pem -C  /tmp/AWS_X509_CERT.pem -n "#{image_name}" --url #{node[:rightimage][:ec2_endpoint]} `
+    image_out_s3=`/home/ec2/bin/ec2-register #{node[:rightimage][:image_upload_bucket]}/#{image_name}.manifest.xml -K  /tmp/AWS_X509_KEY.pem -C  /tmp/AWS_X509_CERT.pem -n "#{image_name}" --url #{node[:rightimage][:ec2_endpoint]} `
 
     echo "Doing EBS"
 
@@ -183,7 +183,7 @@ if node[:rightimage][:cloud] == "ec2"
     region=`echo  #{node[:ec2][:placement_availability_zone]} | cut -c -$length_minus_one`
 
       ## create EBS volume
-    vol_out=`ec2-create-volume \
+    vol_out=`/home/ec2/bin/ec2-create-volume \
       --private-key /tmp/AWS_X509_KEY.pem \
       --cert /tmp/AWS_X509_CERT.pem \
       --size 10 \
@@ -194,7 +194,7 @@ if node[:rightimage][:cloud] == "ec2"
     vol_id=`echo -n $vol_out | awk '{ print $2 }'`
 
 ## attach an EBS volume here
-    ec2-attach-volume $vol_id \
+    /home/ec2/bin/ec2-attach-volume $vol_id \
       --private-key /tmp/AWS_X509_KEY.pem \
       --cert /tmp/AWS_X509_CERT.pem \
       --device /dev/sdj \
@@ -205,7 +205,7 @@ if node[:rightimage][:cloud] == "ec2"
 
 ## loop and wait for volume to become available
     while [ 1 ]; do 
-      vol_status=`ec2-describe-volumes $vol_id  --private-key /tmp/AWS_X509_KEY.pem --cert /tmp/AWS_X509_CERT.pem --url #{node[:rightimage][:ec2_endpoint]}`
+      vol_status=`/home/ec2/bin/ec2-describe-volumes $vol_id  --private-key /tmp/AWS_X509_KEY.pem --cert /tmp/AWS_X509_CERT.pem --url #{node[:rightimage][:ec2_endpoint]}`
       if `echo $vol_status | grep -q "attached"` ; then break; fi
       sleep 1
     done 
@@ -220,7 +220,7 @@ if node[:rightimage][:cloud] == "ec2"
     umount $ebs_mount
 
 ## snapshot the ebs volume and save the snapshot id
-    snap_out=`ec2-create-snapshot $vol_id \
+    snap_out=`/home/ec2/bin/ec2-create-snapshot $vol_id \
       --private-key /tmp/AWS_X509_KEY.pem \
       --cert /tmp/AWS_X509_CERT.pem \
       --url #{node[:rightimage][:ec2_endpoint]} \
@@ -233,12 +233,12 @@ if node[:rightimage][:cloud] == "ec2"
 
 ## loop and wait for snapshot to become available
     while [ 1 ]; do 
-      snap_status=`ec2-describe-snapshots $snap_id --private-key /tmp/AWS_X509_KEY.pem --cert /tmp/AWS_X509_CERT.pem --url #{node[:rightimage][:ec2_endpoint]} `
+      snap_status=`/home/ec2/bin/ec2-describe-snapshots $snap_id --private-key /tmp/AWS_X509_KEY.pem --cert /tmp/AWS_X509_CERT.pem --url #{node[:rightimage][:ec2_endpoint]} `
       if `echo $snap_status | grep -q "completed"` ; then break; fi
       sleep 5
     done 
 
-    image_out_ebs=`ec2-register \
+    image_out_ebs=`/home/ec2/bin/ec2-register \
       --private-key /tmp/AWS_X509_KEY.pem \
       --cert /tmp/AWS_X509_CERT.pem \
       --region $region \
@@ -259,7 +259,7 @@ if node[:rightimage][:cloud] == "ec2"
     echo "$image_id_s3,$image_id_ebs" > /var/tmp/tag_these_images.csv
 
 ## detach volume
-    ec2-detach-volume $vol_id \
+    /home/ec2/bin/ec2-detach-volume $vol_id \
       --private-key /tmp/AWS_X509_KEY.pem \
       --cert /tmp/AWS_X509_CERT.pem \
       --region $region \
@@ -269,7 +269,7 @@ if node[:rightimage][:cloud] == "ec2"
     sleep 10
 
 ## delete volume
-    ec2-delete-volume $vol_id \
+    /home/ec2/bin/ec2-delete-volume $vol_id \
       --private-key /tmp/AWS_X509_KEY.pem \
       --cert /tmp/AWS_X509_CERT.pem \
       --url #{node[:rightimage][:ec2_endpoint]} \

@@ -288,6 +288,13 @@ if node[:rightimage][:cloud] == "ec2"
     action :nothing
   end
   r.run_action(:install)
+
+  r = gem_package "i18n" do
+    gem_binary "/opt/rightscale/sandbox/bin/gem"
+    action :nothing
+  end
+  r.run_action(:install)
+ 
   Gem.clear_paths
   
  # Tag the images that were just created
